@@ -1,0 +1,1551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Choreographer - Goods-to-Person Warehouse Demo</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .add-robot-button {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+        
+        .add-robot-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+        }
+        
+        .add-robot-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .pause-button {
+            background: linear-gradient(135deg, #FF9800, #F57C00);
+            color: white;
+        }
+        
+        .pause-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(255, 152, 0, 0.3);
+        }
+        
+        .pause-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .replay-button {
+            background: linear-gradient(135deg, #9C27B0, #7B1FA2);
+            color: white;
+        }
+        
+        .replay-button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(156, 39, 176, 0.3);
+        }
+        
+        .replay-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .reset-button {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+        }
+        
+        .reset-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(244, 67, 54, 0.3);
+        }
+        
+        .metrics {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .metrics h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .metric-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        
+        .metric-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .metric-label {
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .metric-value {
+            font-weight: 700;
+            color: #333;
+        }
+        
+        .status-running {
+            color: #4CAF50;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-paused {
+            color: #FF9800;
+        }
+        
+        .status-stopped {
+            color: #f44336;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .simulation-info {
+            background: #e3f2fd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+        
+        .simulation-info h4 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        
+        .simulation-info ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        
+        .simulation-info li {
+            margin: 5px 0;
+        }
+        
+        .interaction-info {
+            background: #f3e5f5;
+            border-radius: 6px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .interaction-info h5 {
+            margin-top: 0;
+            color: #7b1fa2;
+        }
+        
+        #canvas-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Choreographer - Warehouse Fleet Optimization</h1>
+        <p class="subtitle">Proactive Flow Engine with Dynamic Collision Avoidance</p>
+        
+        <div class="controls">
+            <button id="startButton" class="add-robot-button">Start Simulation</button>
+            <button id="addRobotButton" class="add-robot-button" disabled>Add Robot</button>
+            <button id="pauseButton" class="pause-button" disabled>Pause</button>
+            <button id="replayButton" class="replay-button" disabled>Replay Optimized Run</button>
+            <button id="resetButton" class="reset-button">Reset</button>
+        </div>
+        
+        <div class="metrics">
+            <h3>Fleet Metrics</h3>
+            <div class="metric-grid">
+                <div class="metric-item">
+                    <span class="metric-label">Robot Count:</span>
+                    <span class="metric-value" id="robotCount">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Mission Time:</span>
+                    <span class="metric-value" id="missionTime">0s</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Distance Traveled:</span>
+                    <span class="metric-value" id="distanceTraveled">0px</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Collisions Avoided:</span>
+                    <span class="metric-value" id="collisionsAvoided">0</span>
+                </div>
+                <div class="metric-item">
+                    <span class="metric-label">Status:</span>
+                    <span class="metric-value" id="status">Stopped</span>
+                </div>
+            </div>
+        </div>
+        
+        <div id="canvas-container"></div>
+        
+        <div class="simulation-info">
+            <h4>Goods-to-Person Warehouse Demo</h4>
+            <p>This simulation demonstrates intelligent warehouse fleet management with congestion-aware pathfinding and dynamic collision avoidance in a realistic goods-to-person scenario.</p>
+            <ul>
+                <li><strong>Blue circles:</strong> Active robots (numbered)</li>
+                <li><strong>Purple circles:</strong> Robots in replay mode (following optimized paths)</li>
+                <li><strong>Red circles:</strong> Robots avoiding other robots</li>
+                <li><strong>Orange circles:</strong> Robots avoiding shelf collisions</li>
+                <li><strong>Magenta circles:</strong> Failed missions (returning to charge)</li>
+                <li><strong>Green circles:</strong> Completed missions</li>
+                <li><strong>Gray shelves:</strong> Inventory racks (draggable)</li>
+                <li><strong>Green dots:</strong> Shelf pickup points</li>
+                <li><strong>Blue squares:</strong> Dropoff stations</li>
+                <li><strong>Green circles:</strong> Available charging points (numbered)</li>
+                <li><strong>Red circles:</strong> Occupied charging points</li>
+                <li><strong>Dotted lines:</strong> Original planned paths</li>
+                <li><strong>Solid green lines:</strong> Traveled paths</li>
+                <li><strong>Orange lines:</strong> Collision avoidance deviations</li>
+            </ul>
+            <div class="interaction-info">
+                <h5>Interactive Features:</h5>
+                <ul>
+                    <li>Start simulation to deploy first robot from charging point</li>
+                    <li>Use "Add Robot" button to dynamically scale the fleet (max 10)</li>
+                    <li>Drag shelves to optimize warehouse layout (only when simulation is paused/stopped)</li>
+                    <li>Robots deploy from multiple charging points</li>
+                    <li>Robots proactively avoid congested routes</li>
+                    <li>Real-time path recalculation on layout changes</li>
+                    <li>Pause to analyze bottlenecks and plan optimizations</li>
+                    <li><strong>Simulation Lock:</strong> Shelves are locked during active simulation for safety</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Global state
+        let robots = [];
+        let obstacles = [];
+        let dropoffPoints = [];
+        let chargingPoints = [];
+        let simulationState = 'stopped';
+        let nextRobotId = 1;
+        let draggedObstacle = { index: null, offset: { x: 0, y: 0 } };
+        let startTime = 0;
+        let pausedTime = 0;
+        let simulationLocked = false; // New: tracks if shelves are locked during simulation
+        let addRobotCooldown = 0; // Cooldown timer for Add Robot button
+        let chargingZoneOccupancy = []; // Track which charging zones are occupied
+        let optimizedPaths = {}; // Store optimized paths for each robot
+        let replayMode = false; // Track if we're in replay mode
+        let metrics = {
+            time: 0,
+            distance: 0,
+            collisionsAvoided: 0,
+            robotCount: 0,
+            missionsFailed: 0
+        };
+
+        // Generate 15 shelf obstacles in neat warehouse aisles (reduced by 25% from 20)
+        function generateObstacles() {
+            const obstacles = [];
+            const shelfWidth = 50;
+            const shelfHeight = 40;
+            const aisleWidth = 80;
+            const aisleHeight = 60;
+            
+            // Create 3 rows of 5 shelves each (warehouse aisles) - 15 total shelves
+            for (let row = 0; row < 3; row++) {
+                for (let col = 0; col < 5; col++) {
+                    obstacles.push({
+                        x: 100 + col * (shelfWidth + aisleWidth),
+                        y: 150 + row * (shelfHeight + aisleHeight),
+                        width: shelfWidth,
+                        height: shelfHeight,
+                        id: `shelf_${row}_${col}`,
+                        dragging: false,
+                        isShelf: true
+                    });
+                }
+            }
+            return obstacles;
+        }
+
+        // Generate 3 dropoff points clustered in isolated area
+        function generateDropoffPoints() {
+            return [
+                { x: 200, y: 500 },
+                { x: 400, y: 500 },
+                { x: 600, y: 500 }
+            ];
+        }
+
+        // Generate multiple charging points for robot deployment
+        function generateChargingPoints() {
+            const points = [
+                { x: 400, y: 50, id: 0, occupied: false },
+                { x: 100, y: 50, id: 1, occupied: false },
+                { x: 700, y: 50, id: 2, occupied: false }
+            ];
+            chargingZoneOccupancy = points.map(p => ({ id: p.id, occupied: false, robotId: null }));
+            return points;
+        }
+
+        // Robot class with two-phase mission (pickup then dropoff)
+        class Robot {
+            constructor(id, mission, obstacles, allRobots = []) {
+                this.id = id;
+                this.mission = mission;
+                this.position = createVector(mission.start.x, mission.start.y);
+                this.originalPath = [];
+                this.currentPath = [];
+                this.traveledPath = [];
+                this.speed = 1.5;
+                this.pathIndex = 0;
+                this.totalDistance = 0;
+                this.radius = 8;
+                this.reachedDestination = false;
+                this.isAvoidingCollision = false;
+                this.avoidanceStartTime = 0;
+                this.hasDeviated = false;
+                this.currentPhase = 'toPickup'; // 'toPickup', 'toDropoff', or 'returningToCharge'
+                this.isAvoidingShelf = false;
+                this.assignedChargingZone = mission.start.zoneId; // Track which charging zone this robot is assigned to
+                this.missionFailed = false;
+                this.pickupAttemptStartTime = Date.now();
+                this.pickupAttemptCount = 0;
+                this.lastPickupPosition = null;
+                this.stuckAtPickup = false;
+                this.optimizedPath = null; // Store the robot's optimized path
+                this.isReplaying = false; // Track if robot is in replay mode
+                this.replayPathIndex = 0; // Current position in replay path
+                this.missionCompleted = false; // Track if robot completed a full mission loop
+                
+                // Mark the charging zone as occupied
+                this.markChargingZoneOccupied(this.assignedChargingZone, true);
+                
+                // Calculate initial path to pickup point
+                if (replayMode && this.optimizedPath) {
+                    // Use optimized path in replay mode
+                    this.originalPath = [...this.optimizedPath];
+                    this.currentPath = [...this.optimizedPath];
+                    this.isReplaying = true;
+                } else {
+                    // Normal pathfinding
+                    this.originalPath = findPath(mission.start, mission.pickup, obstacles, allRobots);
+                    this.currentPath = [...this.originalPath];
+                }
+                this.traveledPath = [this.position.copy()];
+            }
+
+            update(allRobots, obstacles) {
+                if (this.reachedDestination || this.currentPath.length === 0) {
+                    return;
+                }
+
+                // Check for mission failure during pickup phase
+                if (this.currentPhase === 'toPickup' && !this.missionFailed) {
+                    this.checkForMissionFailure();
+                }
+
+                // Check for collision avoidance with other robots first
+                this.checkForCollisionAvoidance(allRobots);
+                
+                // Check for collision with shelves
+                this.checkForShelfCollision(obstacles);
+
+                // If avoiding collision, slow down
+                if (this.isAvoidingCollision) {
+                    this.speed = 0.5;
+                } else {
+                    this.speed = 1.5;
+                }
+
+                if (this.pathIndex >= this.currentPath.length) {
+                    // Reached current destination
+                    if (this.currentPhase === 'toPickup') {
+                        // Check if we actually reached the pickup point
+                        const distanceToPickup = p5.Vector.dist(this.position, createVector(this.mission.pickup.x, this.mission.pickup.y));
+                        if (distanceToPickup < 15) {
+                            // Successfully reached pickup point
+                            this.currentPhase = 'toDropoff';
+                            this.originalPath = findPath(this.position, this.mission.end, obstacles, allRobots);
+                            this.currentPath = [...this.originalPath];
+                            this.pathIndex = 0;
+                            this.hasDeviated = false;
+                            this.pickupAttemptCount = 0; // Reset pickup attempts
+                        } else {
+                            // Failed to reach pickup point, try again
+                            this.pickupAttemptCount++;
+                            this.originalPath = findPath(this.position, this.mission.pickup, obstacles, allRobots);
+                            this.currentPath = [...this.originalPath];
+                            this.pathIndex = 0;
+                            this.hasDeviated = false;
+                        }
+                    } else if (this.currentPhase === 'toDropoff') {
+                        // Reached final destination - check if returning to charging zone
+                        this.checkChargingZoneReturn(obstacles, allRobots);
+                        if (this.reachedDestination) {
+                            // Free up the charging zone when robot completes mission
+                            this.markChargingZoneOccupied(this.assignedChargingZone, false);
+                            
+                            // Record optimized path if this is a successful mission completion
+                            if (!this.missionFailed && !replayMode) {
+                                this.recordOptimizedPath();
+                            }
+                        }
+                    } else if (this.currentPhase === 'returningToCharge') {
+                        // Reached charging zone after mission failure
+                        this.reachedDestination = true;
+                        this.markChargingZoneOccupied(this.assignedChargingZone, false);
+                    }
+                    return;
+                }
+
+                const target = this.currentPath[this.pathIndex];
+                const direction = p5.Vector.sub(target, this.position);
+                const distance = direction.mag();
+
+                if (distance < this.speed) {
+                    this.position.set(target);
+                    this.traveledPath.push(this.position.copy());
+                    this.pathIndex++;
+                } else {
+                    direction.normalize();
+                    direction.mult(this.speed);
+                    const previousPosition = this.position.copy();
+                    this.position.add(direction);
+                    
+                    this.traveledPath.push(this.position.copy());
+                    this.totalDistance += p5.Vector.dist(previousPosition, this.position);
+                }
+            }
+
+            checkForCollisionAvoidance(allRobots) {
+                let needsAvoidance = false;
+                let closestRobot = null;
+                let closestDistance = Infinity;
+                
+                for (let otherRobot of allRobots) {
+                    if (otherRobot.id === this.id) continue;
+                    
+                    const distance = p5.Vector.dist(this.position, otherRobot.position);
+                    const minDistance = this.radius + otherRobot.radius + 8; // Reduced from 30 to 8
+                    
+                    if (distance < minDistance && distance < closestDistance) {
+                        needsAvoidance = true;
+                        closestRobot = otherRobot;
+                        closestDistance = distance;
+                    }
+                }
+                
+                if (needsAvoidance && !this.isAvoidingCollision) {
+                    this.isAvoidingCollision = true;
+                    this.avoidanceStartTime = Date.now();
+                    this.createAvoidancePath(closestRobot);
+                    metrics.collisionsAvoided++;
+                    updateMetrics();
+                } else if (!needsAvoidance && this.isAvoidingCollision) {
+                    this.returnToOriginalPath();
+                } else if (this.isAvoidingCollision && Date.now() - this.avoidanceStartTime > 3000) {
+                    // Force return to original path after 3 seconds to prevent getting stuck
+                    this.returnToOriginalPath();
+                }
+            }
+
+            checkForShelfCollision(obstacles) {
+                // Check if robot is about to collide with any shelf
+                const nextPosition = this.getNextPosition();
+                
+                for (let obstacle of obstacles) {
+                    if (obstacle.isShelf && this.isRobotCollidingWithShelf(nextPosition, obstacle)) {
+                        // Stop the robot and recalculate path
+                        this.handleShelfCollision(obstacle);
+                        return;
+                    }
+                }
+            }
+
+            getNextPosition() {
+                if (this.pathIndex >= this.currentPath.length) {
+                    return this.position.copy();
+                }
+                
+                const target = this.currentPath[this.pathIndex];
+                const direction = p5.Vector.sub(target, this.position);
+                const distance = direction.mag();
+                
+                if (distance < this.speed) {
+                    return target.copy();
+                } else {
+                    direction.normalize();
+                    direction.mult(this.speed);
+                    return p5.Vector.add(this.position, direction);
+                }
+            }
+
+            isRobotCollidingWithShelf(robotPos, shelf) {
+                // Check if robot circle intersects with shelf rectangle
+                const robotRadius = this.radius;
+                const margin = 5; // Small margin for safety
+                
+                // Expand shelf bounds by robot radius + margin
+                const expandedShelf = {
+                    x: shelf.x - robotRadius - margin,
+                    y: shelf.y - robotRadius - margin,
+                    width: shelf.width + 2 * (robotRadius + margin),
+                    height: shelf.height + 2 * (robotRadius + margin)
+                };
+                
+                return (robotPos.x >= expandedShelf.x && 
+                        robotPos.x <= expandedShelf.x + expandedShelf.width &&
+                        robotPos.y >= expandedShelf.y && 
+                        robotPos.y <= expandedShelf.y + expandedShelf.height);
+            }
+
+            handleShelfCollision(shelf) {
+                // Set shelf avoidance flag
+                this.isAvoidingShelf = true;
+                
+                // Stop the robot temporarily
+                this.speed = 0;
+                
+                // Recalculate path to avoid the shelf
+                const target = this.currentPhase === 'toPickup' ? this.mission.pickup : this.mission.end;
+                this.originalPath = findPath(this.position, target, obstacles, robots);
+                this.currentPath = [...this.originalPath];
+                this.pathIndex = 0;
+                this.hasDeviated = false;
+                
+                // Reset speed after path recalculation
+                this.speed = 1.5;
+                
+                // Clear shelf avoidance flag after a short delay
+                setTimeout(() => {
+                    this.isAvoidingShelf = false;
+                }, 1000);
+                
+                // Increment collision counter
+                metrics.collisionsAvoided++;
+                updateMetrics();
+            }
+
+            createAvoidancePath(otherRobot) {
+                const currentTarget = this.currentPath[this.pathIndex];
+                if (currentTarget && otherRobot) {
+                    // Calculate direction away from the other robot
+                    const awayFromOther = p5.Vector.sub(this.position, otherRobot.position);
+                    awayFromOther.normalize();
+                    
+                    // Add some randomness to prevent parallel movement
+                    const randomAngle = (Math.random() - 0.5) * PI / 3; // ±30 degrees
+                    awayFromOther.rotate(randomAngle);
+                    
+                    // Create avoidance point at a reasonable distance
+                    const avoidanceDistance = 25; // Reduced from 50
+                    awayFromOther.mult(avoidanceDistance);
+                    
+                    const avoidancePoint = p5.Vector.add(this.position, awayFromOther);
+                    this.currentPath.splice(this.pathIndex, 0, avoidancePoint);
+                    this.hasDeviated = true;
+                }
+            }
+
+            returnToOriginalPath() {
+                this.isAvoidingCollision = false;
+                this.hasDeviated = false;
+                
+                if (this.isReplaying && this.optimizedPath) {
+                    // In replay mode, return to optimized path
+                    this.returnToOptimizedPath();
+                } else {
+                    // Normal return to original path
+                    let closestIndex = 0;
+                    let minDistance = Infinity;
+                    
+                    for (let i = 0; i < this.originalPath.length; i++) {
+                        const distance = p5.Vector.dist(this.position, this.originalPath[i]);
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestIndex = i;
+                        }
+                    }
+                    
+                    this.currentPath = [...this.originalPath.slice(closestIndex)];
+                    this.pathIndex = 0;
+                }
+            }
+
+            recalculatePath(obstacles, allRobots) {
+                const target = this.currentPhase === 'toPickup' ? this.mission.pickup : this.mission.end;
+                this.originalPath = findPath(this.position, target, obstacles, allRobots);
+                this.currentPath = [...this.originalPath];
+                this.pathIndex = 0;
+                this.hasDeviated = false;
+            }
+
+            draw() {
+                // Draw original path (faint dotted line)
+                if (this.isReplaying && this.optimizedPath) {
+                    // Draw optimized path in purple
+                    stroke(156, 39, 176, 150);
+                    strokeWeight(2);
+                    noFill();
+                    drawingContext.setLineDash([8, 4]);
+                    beginShape();
+                    for (let point of this.optimizedPath) {
+                        vertex(point.x, point.y);
+                    }
+                    endShape();
+                    drawingContext.setLineDash([]);
+                } else {
+                    // Draw normal original path
+                    stroke(100, 100, 255, 100);
+                    strokeWeight(1);
+                    noFill();
+                    drawingContext.setLineDash([5, 5]);
+                    beginShape();
+                    for (let point of this.originalPath) {
+                        vertex(point.x, point.y);
+                    }
+                    endShape();
+                    drawingContext.setLineDash([]);
+                }
+
+                // Draw traveled path (solid green line)
+                if (this.traveledPath.length > 1) {
+                    stroke(0, 255, 0, 200);
+                    strokeWeight(2);
+                    noFill();
+                    beginShape();
+                    for (let point of this.traveledPath) {
+                        vertex(point.x, point.y);
+                    }
+                    endShape();
+                }
+
+                // Draw current path (orange if deviated, blue otherwise)
+                if (this.currentPath.length > 1) {
+                    stroke(this.hasDeviated ? 255 : 0, this.hasDeviated ? 165 : 0, 0, 200);
+                    strokeWeight(2);
+                    noFill();
+                    beginShape();
+                    for (let point of this.currentPath) {
+                        vertex(point.x, point.y);
+                    }
+                    endShape();
+                }
+
+                // Draw robot
+                if (this.missionFailed) {
+                    fill(255, 0, 255); // Magenta for failed mission
+                    stroke(200, 0, 200);
+                } else if (this.isReplaying) {
+                    fill(156, 39, 176); // Purple for replay mode
+                    stroke(123, 31, 162);
+                } else if (this.isAvoidingCollision) {
+                    fill(255, 0, 0);
+                    stroke(200, 0, 0);
+                } else if (this.isAvoidingShelf) {
+                    fill(255, 165, 0); // Orange for shelf avoidance
+                    stroke(200, 100, 0);
+                } else if (this.reachedDestination) {
+                    fill(0, 255, 0);
+                    stroke(0, 200, 0);
+                } else {
+                    fill(0, 100, 255);
+                    stroke(0, 50, 200);
+                }
+                
+                strokeWeight(2);
+                ellipse(this.position.x, this.position.y, this.radius * 2, this.radius * 2);
+                
+                // Draw robot ID
+                fill(255);
+                textAlign(CENTER, CENTER);
+                textSize(10);
+                text(this.id, this.position.x, this.position.y);
+                
+                // Draw mission status
+                if (this.missionFailed) {
+                    fill(255, 0, 255);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('FAILED', this.position.x, this.position.y + 20);
+                } else if (this.isReplaying) {
+                    fill(255, 255, 255);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('REPLAY', this.position.x, this.position.y + 20);
+                } else if (this.currentPhase === 'returningToCharge') {
+                    fill(255, 255, 0);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('RETURN', this.position.x, this.position.y + 20);
+                }
+                
+                // Draw collision detection radius when avoiding
+                if (this.isAvoidingCollision) {
+                    fill(255, 0, 0, 30);
+                    stroke(255, 0, 0, 100);
+                    strokeWeight(1);
+                    ellipse(this.position.x, this.position.y, (this.radius + 8) * 2, (this.radius + 8) * 2); // Reduced from 30 to 8
+                    
+                    fill(255, 0, 0);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('AVOID', this.position.x, this.position.y + 20);
+                } else if (this.isAvoidingShelf) {
+                    fill(255, 165, 0, 30);
+                    stroke(255, 165, 0, 100);
+                    strokeWeight(1);
+                    ellipse(this.position.x, this.position.y, (this.radius + 20) * 2, (this.radius + 20) * 2);
+                    
+                    fill(255, 165, 0);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('SHELF', this.position.x, this.position.y + 20);
+                }
+            }
+
+            checkChargingZoneReturn(obstacles, allRobots) {
+                // Check if the assigned charging zone is still occupied by another robot
+                const assignedZone = chargingZoneOccupancy.find(zone => zone.id === this.assignedChargingZone);
+                
+                if (assignedZone && assignedZone.occupied && assignedZone.robotId !== this.id) {
+                    // Find the nearest unoccupied charging zone
+                    const nearestUnoccupiedZone = this.findNearestUnoccupiedChargingZone();
+                    
+                    if (nearestUnoccupiedZone) {
+                        // Reroute to the nearest unoccupied charging zone
+                        this.assignedChargingZone = nearestUnoccupiedZone.id;
+                        this.markChargingZoneOccupied(nearestUnoccupiedZone.id, true);
+                        
+                        // Recalculate path to the new charging zone
+                        const newChargingPoint = chargingPoints.find(cp => cp.id === nearestUnoccupiedZone.id);
+                        this.originalPath = findPath(this.position, newChargingPoint, obstacles, allRobots);
+                        this.currentPath = [...this.originalPath];
+                        this.pathIndex = 0;
+                        this.hasDeviated = false;
+                        this.reachedDestination = false; // Continue to new charging zone
+                    }
+                }
+            }
+            
+            findNearestUnoccupiedChargingZone() {
+                let nearestZone = null;
+                let minDistance = Infinity;
+                
+                for (let zone of chargingZoneOccupancy) {
+                    if (!zone.occupied) {
+                        const chargingPoint = chargingPoints.find(cp => cp.id === zone.id);
+                        const distance = p5.Vector.dist(this.position, createVector(chargingPoint.x, chargingPoint.y));
+                        
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            nearestZone = zone;
+                        }
+                    }
+                }
+                
+                return nearestZone;
+            }
+            
+            checkForMissionFailure() {
+                const currentTime = Date.now();
+                const timeSincePickupAttempt = currentTime - this.pickupAttemptStartTime;
+                
+                // Check if robot is stuck (not making progress toward pickup)
+                const distanceToPickup = p5.Vector.dist(this.position, createVector(this.mission.pickup.x, this.mission.pickup.y));
+                
+                if (this.lastPickupPosition) {
+                    const progressMade = p5.Vector.dist(this.lastPickupPosition, createVector(this.mission.pickup.x, this.mission.pickup.y)) - distanceToPickup;
+                    if (progressMade < 5) {
+                        // Robot is not making significant progress
+                        this.stuckAtPickup = true;
+                    } else {
+                        this.stuckAtPickup = false;
+                    }
+                }
+                
+                this.lastPickupPosition = this.position.copy();
+                
+                // Mission fails if stuck for more than 3 seconds or too many attempts
+                if ((this.stuckAtPickup && timeSincePickupAttempt > 3000) || this.pickupAttemptCount > 5) {
+                    this.cancelMission();
+                }
+            }
+            
+            cancelMission() {
+                this.missionFailed = true;
+                this.currentPhase = 'returningToCharge';
+                metrics.missionsFailed++;
+                updateMetrics();
+                
+                // Find nearest available charging zone
+                const nearestChargingZone = this.findNearestUnoccupiedChargingZone();
+                if (nearestChargingZone) {
+                    this.assignedChargingZone = nearestChargingZone.id;
+                    this.markChargingZoneOccupied(nearestChargingZone.id, true);
+                    
+                    const chargingPoint = chargingPoints.find(cp => cp.id === nearestChargingZone.id);
+                    this.originalPath = findPath(this.position, chargingPoint, obstacles, robots);
+                    this.currentPath = [...this.originalPath];
+                    this.pathIndex = 0;
+                    this.hasDeviated = false;
+                } else {
+                    // If no charging zone available, just stop
+                    this.reachedDestination = true;
+                }
+            }
+            
+            recordOptimizedPath() {
+                // Create a complete mission path: charging zone -> pickup -> dropoff -> charging zone
+                const completePath = [];
+                
+                // Add charging zone start point
+                const chargingPoint = chargingPoints.find(cp => cp.id === this.assignedChargingZone);
+                if (chargingPoint) {
+                    completePath.push(createVector(chargingPoint.x, chargingPoint.y));
+                }
+                
+                // Add pickup point
+                completePath.push(createVector(this.mission.pickup.x, this.mission.pickup.y));
+                
+                // Add dropoff point
+                completePath.push(createVector(this.mission.end.x, this.mission.end.y));
+                
+                // Add return to charging zone
+                if (chargingPoint) {
+                    completePath.push(createVector(chargingPoint.x, chargingPoint.y));
+                }
+                
+                // Store the optimized path
+                this.optimizedPath = completePath;
+                optimizedPaths[this.id] = completePath;
+                
+                console.log(`Robot ${this.id} recorded optimized path with ${completePath.length} waypoints`);
+            }
+            
+            returnToOptimizedPath() {
+                // Find the closest point on the optimized path to return to
+                if (!this.optimizedPath || this.optimizedPath.length === 0) return;
+                
+                let closestIndex = 0;
+                let minDistance = Infinity;
+                
+                for (let i = 0; i < this.optimizedPath.length; i++) {
+                    const distance = p5.Vector.dist(this.position, this.optimizedPath[i]);
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        closestIndex = i;
+                    }
+                }
+                
+                // Set path to continue from the closest point
+                this.originalPath = [...this.optimizedPath.slice(closestIndex)];
+                this.currentPath = [...this.originalPath];
+                this.pathIndex = 0;
+                this.hasDeviated = false;
+            }
+            
+            markChargingZoneOccupied(zoneId, occupied) {
+                const zone = chargingZoneOccupancy.find(z => z.id === zoneId);
+                if (zone) {
+                    zone.occupied = occupied;
+                    zone.robotId = occupied ? this.id : null;
+                }
+            }
+            
+            hasReachedDestination() {
+                return this.reachedDestination;
+            }
+
+            getDistanceTraveled() {
+                return this.totalDistance;
+            }
+        }
+
+        // Enhanced pathfinding with 4.4% gain philosophy
+        function findPath(start, end, obstacles, allRobots = []) {
+            const startVec = createVector(start.x, start.y);
+            const endVec = createVector(end.x, end.y);
+            
+            if (isPathClear(startVec, endVec, obstacles)) {
+                const directPath = [startVec, endVec];
+                const directPenalty = calculateCongestionPenalty(directPath, allRobots);
+                
+                // 4.4% gain philosophy: prefer direct path if congestion is low
+                if (directPenalty < 0.2) {
+                    return directPath;
+                }
+            }
+            
+            const alternativePaths = generateAlternativePaths(startVec, endVec, obstacles);
+            
+            if (alternativePaths.length === 0) {
+                return [startVec, endVec];
+            }
+            
+            let bestPath = alternativePaths[0];
+            let bestScore = Infinity;
+            
+            for (let path of alternativePaths) {
+                const congestionPenalty = calculateCongestionPenalty(path, allRobots);
+                const pathLength = calculatePathLength(path);
+                const directLength = calculatePathLength([startVec, endVec]);
+                
+                // Prefer paths that are only marginally longer
+                const lengthRatio = pathLength / directLength;
+                const efficiencyBonus = lengthRatio < 1.1 ? 0 : (lengthRatio - 1.1) * 50;
+                
+                const totalScore = congestionPenalty * 100 + efficiencyBonus;
+                
+                if (totalScore < bestScore) {
+                    bestScore = totalScore;
+                    bestPath = path;
+                }
+            }
+            
+            return bestPath;
+        }
+
+        function isPathClear(start, end, obstacles) {
+            for (let obstacle of obstacles) {
+                if (lineIntersectsRect(start, end, obstacle)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        function lineIntersectsRect(p1, p2, rect) {
+            const margin = 30; // Increased margin to ensure no overlapping
+            const expandedRect = {
+                x: rect.x - margin,
+                y: rect.y - margin,
+                width: rect.width + 2 * margin,
+                height: rect.height + 2 * margin
+            };
+            
+            return lineIntersectsRectInternal(p1, p2, expandedRect);
+        }
+
+        function lineIntersectsRectInternal(p1, p2, rect) {
+            const left = lineIntersectsLine(p1, p2, createVector(rect.x, rect.y), createVector(rect.x, rect.y + rect.height));
+            const right = lineIntersectsLine(p1, p2, createVector(rect.x + rect.width, rect.y), createVector(rect.x + rect.width, rect.y + rect.height));
+            const top = lineIntersectsLine(p1, p2, createVector(rect.x, rect.y), createVector(rect.x + rect.width, rect.y));
+            const bottom = lineIntersectsLine(p1, p2, createVector(rect.x, rect.y + rect.height), createVector(rect.x + rect.width, rect.y + rect.height));
+            
+            return left || right || top || bottom;
+        }
+
+        function lineIntersectsLine(p1, p2, p3, p4) {
+            const denom = (p1.x - p2.x) * (p3.y - p4.y) - (p1.y - p2.y) * (p3.x - p4.x);
+            if (abs(denom) < 0.0001) return false;
+            
+            const t = ((p1.x - p3.x) * (p3.y - p4.y) - (p1.y - p3.y) * (p3.x - p4.x)) / denom;
+            const u = -((p1.x - p2.x) * (p1.y - p3.y) - (p1.y - p2.y) * (p1.x - p3.x)) / denom;
+            
+            return t >= 0 && t <= 1 && u >= 0 && u <= 1;
+        }
+
+        function calculateCongestionPenalty(path, allRobots) {
+            let penalty = 0;
+            
+            for (let robot of allRobots) {
+                if (robot.originalPath && robot.originalPath.length > 1) {
+                    for (let i = 0; i < path.length - 1; i++) {
+                        for (let j = 0; j < robot.originalPath.length - 1; j++) {
+                            const distance = getSegmentDistance(path[i], path[i + 1], robot.originalPath[j], robot.originalPath[j + 1]);
+                            if (distance < 50) {
+                                penalty += (50 - distance) / 50;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            return penalty;
+        }
+
+        function getSegmentDistance(p1, p2, p3, p4) {
+            const mid1 = p5.Vector.add(p1, p2).mult(0.5);
+            const mid2 = p5.Vector.add(p3, p4).mult(0.5);
+            return p5.Vector.dist(mid1, mid2);
+        }
+
+        function calculatePathLength(path) {
+            let length = 0;
+            for (let i = 0; i < path.length - 1; i++) {
+                length += p5.Vector.dist(path[i], path[i + 1]);
+            }
+            return length;
+        }
+
+        function generateAlternativePaths(start, end, obstacles) {
+            const strategies = ['right', 'left', 'top', 'bottom'];
+            const paths = [];
+            
+            for (let strategy of strategies) {
+                const path = createStrategyPath(start, end, obstacles, strategy);
+                if (path && path.length > 0) {
+                    paths.push(path);
+                }
+            }
+            
+            return paths;
+        }
+
+        function createStrategyPath(start, end, obstacles, strategy) {
+            const blockingObstacle = findFirstBlockingObstacle(start, end, obstacles);
+            
+            if (!blockingObstacle) {
+                return [start, end];
+            }
+            
+            const { x, y, width, height } = blockingObstacle;
+            const margin = 30;
+            
+            let waypoint1, waypoint2;
+            
+            switch (strategy) {
+                case 'right':
+                    waypoint1 = createVector(x + width + margin, start.y);
+                    waypoint2 = createVector(x + width + margin, end.y);
+                    break;
+                case 'left':
+                    waypoint1 = createVector(x - margin, start.y);
+                    waypoint2 = createVector(x - margin, end.y);
+                    break;
+                case 'top':
+                    waypoint1 = createVector(start.x, y - margin);
+                    waypoint2 = createVector(end.x, y - margin);
+                    break;
+                case 'bottom':
+                    waypoint1 = createVector(start.x, y + height + margin);
+                    waypoint2 = createVector(end.x, y + height + margin);
+                    break;
+            }
+            
+            return [start, waypoint1, waypoint2, end];
+        }
+
+        function findFirstBlockingObstacle(start, end, obstacles) {
+            for (let obstacle of obstacles) {
+                if (lineIntersectsRect(start, end, obstacle)) {
+                    return obstacle;
+                }
+            }
+            return null;
+        }
+
+        // Control functions
+        function startSimulation() {
+            if (simulationState !== 'stopped') return;
+            
+            // Start the simulation and add first robot
+            addRobot();
+            startTime = Date.now();
+            
+            // Lock shelves when simulation starts
+            simulationLocked = true;
+            
+            // Update button states
+            updateButtonStates();
+        }
+
+        function addRobot() {
+            if (robots.length >= 10) {
+                alert('Maximum of 10 robots allowed!');
+                return;
+            }
+            
+            // Find an unoccupied charging point
+            const unoccupiedChargingPoints = chargingPoints.filter(cp => {
+                const zone = chargingZoneOccupancy.find(z => z.id === cp.id);
+                return zone && !zone.occupied;
+            });
+            
+            if (unoccupiedChargingPoints.length === 0) {
+                alert('All charging zones are occupied! Please wait for a robot to finish.');
+                return;
+            }
+            
+            const randomChargingPoint = unoccupiedChargingPoints[Math.floor(Math.random() * unoccupiedChargingPoints.length)];
+            const randomShelf = obstacles[Math.floor(Math.random() * obstacles.length)];
+            const shelfPickupPoint = {
+                x: randomShelf.x + randomShelf.width / 2,
+                y: randomShelf.y - 10
+            };
+            const randomDropoff = dropoffPoints[Math.floor(Math.random() * dropoffPoints.length)];
+            
+            const newRobot = new Robot(
+                nextRobotId,
+                { 
+                    start: randomChargingPoint, 
+                    pickup: shelfPickupPoint,
+                    end: randomDropoff 
+                },
+                obstacles,
+                robots
+            );
+            
+            robots.push(newRobot);
+            nextRobotId++;
+            
+            if (simulationState === 'stopped') {
+                simulationState = 'running';
+                startTime = Date.now();
+            }
+            
+            // Start cooldown timer
+            addRobotCooldown = 5000; // 5 seconds in milliseconds
+            
+            metrics.robotCount = robots.length;
+            updateMetrics();
+            updateButtonStates();
+        }
+
+        function togglePause() {
+            if (simulationState === 'running') {
+                simulationState = 'paused';
+                pausedTime = Date.now();
+                // Unlock shelves when paused
+                simulationLocked = false;
+            } else if (simulationState === 'paused') {
+                simulationState = 'running';
+                startTime = startTime + (Date.now() - pausedTime);
+                // Lock shelves when resuming
+                simulationLocked = true;
+            }
+            updateMetrics();
+            updateButtonStates();
+        }
+
+        function startReplayMode() {
+            if (Object.keys(optimizedPaths).length === 0) {
+                alert('No optimized paths available! Complete some missions first to record optimized paths.');
+                return;
+            }
+            
+            // Reset simulation for replay
+            resetSimulation();
+            
+            // Enable replay mode
+            replayMode = true;
+            
+            // Add robots with their optimized paths
+            const robotIds = Object.keys(optimizedPaths);
+            for (let i = 0; i < Math.min(3, robotIds.length); i++) {
+                const robotId = parseInt(robotIds[i]);
+                const optimizedPath = optimizedPaths[robotId];
+                
+                if (optimizedPath && optimizedPath.length >= 4) {
+                    // Create mission from optimized path
+                    const mission = {
+                        start: { x: optimizedPath[0].x, y: optimizedPath[0].y, zoneId: 0 },
+                        pickup: { x: optimizedPath[1].x, y: optimizedPath[1].y },
+                        end: { x: optimizedPath[2].x, y: optimizedPath[2].y }
+                    };
+                    
+                    const newRobot = new Robot(
+                        robotId,
+                        mission,
+                        obstacles,
+                        robots
+                    );
+                    
+                    // Set the optimized path
+                    newRobot.optimizedPath = optimizedPath;
+                    newRobot.isReplaying = true;
+                    
+                    robots.push(newRobot);
+                }
+            }
+            
+            if (robots.length > 0) {
+                simulationState = 'running';
+                startTime = Date.now();
+                simulationLocked = true;
+                metrics.robotCount = robots.length;
+                updateMetrics();
+                updateButtonStates();
+            }
+        }
+        
+        function resetSimulation() {
+            robots = [];
+            obstacles = generateObstacles();
+            dropoffPoints = generateDropoffPoints();
+            chargingPoints = generateChargingPoints();
+            simulationState = 'stopped';
+            nextRobotId = 1;
+            startTime = 0;
+            pausedTime = 0;
+            addRobotCooldown = 0; // Reset cooldown
+            replayMode = false; // Reset replay mode
+            // Unlock shelves when simulation is reset/stopped
+            simulationLocked = false;
+            metrics = { time: 0, distance: 0, collisionsAvoided: 0, robotCount: 0, missionsFailed: 0 };
+            updateMetrics();
+            updateButtonStates();
+        }
+
+        function updateMetrics() {
+            // Update mission time continuously during simulation
+            if (simulationState === 'running' && startTime > 0) {
+                const currentTime = (Date.now() - startTime) / 1000;
+                metrics.time = currentTime.toFixed(1);
+            } else if (simulationState === 'paused' && startTime > 0) {
+                // Keep the time from when it was paused
+                const timeWhenPaused = (pausedTime - startTime) / 1000;
+                metrics.time = timeWhenPaused.toFixed(1);
+            }
+            
+            document.getElementById('robotCount').textContent = metrics.robotCount;
+            document.getElementById('missionTime').textContent = metrics.time + 's';
+            document.getElementById('distanceTraveled').textContent = metrics.distance + 'px';
+            document.getElementById('collisionsAvoided').textContent = metrics.collisionsAvoided;
+            document.getElementById('status').textContent = simulationState.charAt(0).toUpperCase() + simulationState.slice(1);
+            document.getElementById('status').className = 'metric-value status-' + simulationState;
+        }
+
+        function updateButtonStates() {
+            const startButton = document.getElementById('startButton');
+            const addRobotButton = document.getElementById('addRobotButton');
+            const pauseButton = document.getElementById('pauseButton');
+            const replayButton = document.getElementById('replayButton');
+            
+            // Start button - only enabled when stopped
+            if (simulationState === 'stopped') {
+                startButton.disabled = false;
+                startButton.textContent = 'Start Simulation';
+            } else {
+                startButton.disabled = true;
+                startButton.textContent = 'Simulation Running';
+            }
+            
+            // Add Robot button - enabled when running or paused, disabled when stopped, at max capacity, or on cooldown
+            if (simulationState === 'stopped' || robots.length >= 10 || addRobotCooldown > 0) {
+                addRobotButton.disabled = true;
+                if (addRobotCooldown > 0) {
+                    addRobotButton.textContent = `Add Robot (${Math.ceil(addRobotCooldown / 1000)}s)`;
+                } else {
+                    addRobotButton.textContent = 'Add Robot';
+                }
+            } else {
+                addRobotButton.disabled = false;
+                addRobotButton.textContent = 'Add Robot';
+            }
+            
+            // Pause button - enabled when running or paused, disabled when stopped
+            if (simulationState === 'stopped') {
+                pauseButton.disabled = true;
+            } else {
+                pauseButton.disabled = false;
+                pauseButton.textContent = simulationState === 'running' ? 'Pause' : 'Resume';
+            }
+            
+            // Replay button - only enabled when stopped and optimized paths are available
+            if (simulationState === 'stopped' && Object.keys(optimizedPaths).length > 0) {
+                replayButton.disabled = false;
+                replayButton.textContent = `Replay Optimized Run (${Object.keys(optimizedPaths).length} paths)`;
+            } else {
+                replayButton.disabled = true;
+                replayButton.textContent = 'Replay Optimized Run';
+            }
+        }
+
+        // Mouse handling for dragging obstacles
+        function handleMouseDown(mouseX, mouseY) {
+            // Don't allow dragging if simulation is locked (running)
+            if (simulationLocked) {
+                return;
+            }
+            
+            for (let i = 0; i < obstacles.length; i++) {
+                const obstacle = obstacles[i];
+                if (mouseX >= obstacle.x && mouseX <= obstacle.x + obstacle.width &&
+                    mouseY >= obstacle.y && mouseY <= obstacle.y + obstacle.height) {
+                    draggedObstacle = {
+                        index: i,
+                        offset: { x: mouseX - obstacle.x, y: mouseY - obstacle.y }
+                    };
+                    break;
+                }
+            }
+        }
+
+        function handleMouseMove(mouseX, mouseY) {
+            // Don't allow movement if simulation is locked (running)
+            if (simulationLocked) {
+                return;
+            }
+            
+            if (draggedObstacle.index !== null) {
+                const obstacle = obstacles[draggedObstacle.index];
+                obstacle.x = Math.max(0, Math.min(800 - obstacle.width, mouseX - draggedObstacle.offset.x));
+                obstacle.y = Math.max(0, Math.min(600 - obstacle.height, mouseY - draggedObstacle.offset.y));
+                
+                // Recalculate paths for all robots
+                robots.forEach(robot => {
+                    robot.recalculatePath(obstacles, robots);
+                });
+            }
+        }
+
+        function handleMouseUp() {
+            draggedObstacle = { index: null, offset: { x: 0, y: 0 } };
+        }
+
+        // p5.js setup
+        function setup() {
+            const canvas = createCanvas(800, 600);
+            canvas.parent('canvas-container');
+            
+            // Initialize obstacles, dropoff points, and charging points
+            obstacles = generateObstacles();
+            dropoffPoints = generateDropoffPoints();
+            chargingPoints = generateChargingPoints();
+            
+            // Setup button event listeners
+            document.getElementById('startButton').addEventListener('click', startSimulation);
+            document.getElementById('addRobotButton').addEventListener('click', addRobot);
+            document.getElementById('pauseButton').addEventListener('click', togglePause);
+            document.getElementById('replayButton').addEventListener('click', startReplayMode);
+            document.getElementById('resetButton').addEventListener('click', resetSimulation);
+            
+            updateMetrics();
+        }
+
+        function draw() {
+            background(240);
+            
+            // Draw charging points
+            chargingPoints.forEach((point, index) => {
+                const zone = chargingZoneOccupancy.find(z => z.id === point.id);
+                const isOccupied = zone && zone.occupied;
+                
+                // Different colors for occupied vs available charging zones
+                if (isOccupied) {
+                    fill(255, 100, 100, 150); // Red for occupied
+                    stroke(200, 50, 50);
+                } else {
+                    fill(100, 255, 100, 150); // Green for available
+                    stroke(50, 200, 50);
+                }
+                strokeWeight(2);
+                ellipse(point.x, point.y, 60, 60);
+                
+                fill(100, 100, 100);
+                textAlign(CENTER, CENTER);
+                textSize(10);
+                text(isOccupied ? 'OCCUPIED' : 'CHARGE', point.x, point.y + 2);
+                
+                // Draw charging point number
+                fill(50, 50, 50);
+                textSize(8);
+                text(index + 1, point.x, point.y - 15);
+            });
+            
+            // Draw obstacles with shelving graphics
+            obstacles.forEach(obstacle => {
+                if (simulationLocked) {
+                    // Locked appearance - darker and with lock indicator
+                    fill(120, 120, 120);
+                    stroke(80, 80, 80);
+                } else if (obstacle.dragging) {
+                    fill(150, 150, 150);
+                    stroke(100, 100, 100);
+                } else {
+                    fill(200, 200, 200);
+                    stroke(150, 150, 150);
+                }
+                strokeWeight(2);
+                rect(obstacle.x, obstacle.y, obstacle.width, obstacle.height);
+                
+                // Draw shelving details
+                if (simulationLocked) {
+                    fill(100, 100, 100);
+                    stroke(60, 60, 60);
+                } else {
+                    fill(180, 180, 180);
+                    stroke(120, 120, 120);
+                }
+                strokeWeight(1);
+                for (let i = 1; i < 3; i++) {
+                    const shelfY = obstacle.y + (obstacle.height / 3) * i;
+                    rect(obstacle.x + 3, shelfY, obstacle.width - 6, 2);
+                }
+                
+                // Draw vertical supports
+                for (let i = 0; i < 3; i++) {
+                    const supportX = obstacle.x + (obstacle.width / 3) * i;
+                    rect(supportX - 1, obstacle.y + 3, 2, obstacle.height - 6);
+                }
+                
+                // Draw lock indicator when simulation is locked
+                if (simulationLocked) {
+                    fill(255, 0, 0);
+                    stroke(200, 0, 0);
+                    strokeWeight(1);
+                    textAlign(CENTER, CENTER);
+                    textSize(8);
+                    text('🔒', obstacle.x + obstacle.width/2, obstacle.y + obstacle.height/2);
+                }
+            });
+            
+            // Draw shelf pickup indicators
+            obstacles.forEach(obstacle => {
+                if (obstacle.isShelf) {
+                    fill(0, 255, 0);
+                    stroke(0, 200, 0);
+                    strokeWeight(2);
+                    ellipse(obstacle.x + obstacle.width/2, obstacle.y - 10, 6, 6);
+                }
+            });
+            
+            // Draw dropoff points
+            dropoffPoints.forEach(point => {
+                fill(0, 100, 255);
+                stroke(0, 50, 200);
+                strokeWeight(2);
+                rect(point.x - 15, point.y - 15, 30, 30);
+                fill(255);
+                textAlign(CENTER, CENTER);
+                textSize(8);
+                text('DROP', point.x, point.y + 2);
+            });
+            
+            // Update and draw robots only when running
+            if (simulationState === 'running') {
+                robots.forEach(robot => {
+                    robot.update(robots, obstacles);
+                    robot.draw();
+                });
+                
+                // Update cooldown timer
+                if (addRobotCooldown > 0) {
+                    addRobotCooldown -= 16; // Assuming ~60fps, subtract ~16ms per frame
+                    if (addRobotCooldown <= 0) {
+                        addRobotCooldown = 0;
+                        updateButtonStates();
+                    }
+                }
+                
+                // Update metrics continuously during simulation
+                updateMetrics();
+                
+                // Check if all robots have reached their destination
+                const allRobotsFinished = robots.every(robot => robot.hasReachedDestination());
+                if (allRobotsFinished && robots.length > 0) {
+                    const totalDistance = robots.reduce((sum, robot) => sum + robot.getDistanceTraveled(), 0);
+                    
+                    metrics.distance = Math.round(totalDistance);
+                    
+                    simulationState = 'stopped';
+                    // Unlock shelves when simulation automatically stops
+                    simulationLocked = false;
+                    updateMetrics();
+                }
+            }
+            
+            // Draw robots when paused or stopped
+            if ((simulationState === 'paused' || simulationState === 'stopped') && robots.length > 0) {
+                robots.forEach(robot => {
+                    robot.draw();
+                });
+            }
+            
+            // Draw instructions
+            if (simulationState === 'running') {
+                fill(0, 0, 0, 150);
+                noStroke();
+                rect(10, 10, 350, 120);
+                fill(255);
+                textAlign(LEFT);
+                textSize(12);
+                text('🔒 Shelves are LOCKED during simulation for safety', 20, 30);
+                text('Use "Add Robot" button to scale fleet dynamically', 20, 45);
+                text(`Active Robots: ${robots.length}/10`, 20, 60);
+                text('Purple: Replay mode | Red: Robot collision | Orange: Shelf collision | Magenta: Failed mission | Green: Complete', 20, 75);
+                text('Green/Red circles: Available/Occupied charging points | Dotted lines: Original paths', 20, 90);
+                text('Pause simulation to unlock shelves for layout changes', 20, 105);
+            }
+        }
+
+        function mousePressed() {
+            handleMouseDown(mouseX, mouseY);
+        }
+
+        function mouseDragged() {
+            handleMouseMove(mouseX, mouseY);
+        }
+
+        function mouseReleased() {
+            handleMouseUp();
+        }
+    </script>
+</body>
+</html>
